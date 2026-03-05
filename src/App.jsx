@@ -5,7 +5,6 @@ import CardGrid from './components/CardGrid';
 import ListView from './components/ListView';
 import DetailPanel from './components/DetailPanel';
 import RelationshipView from './components/RelationshipView';
-import SearchBar from './components/SearchBar';
 import FilterBar from './components/FilterBar';
 import ViewToggle from './components/ViewToggle';
 import LoadingSpinner from './components/LoadingSpinner';
@@ -113,7 +112,7 @@ function Dashboard() {
   if (loading) {
     return (
       <>
-        <Header />
+        <Header searchQuery={searchQuery} onSearchChange={setSearchQuery} />
         <LoadingSpinner message="Fetching data from Azure API Center..." />
       </>
     );
@@ -121,7 +120,7 @@ function Dashboard() {
 
   return (
     <>
-      <Header />
+      <Header searchQuery={searchQuery} onSearchChange={setSearchQuery} />
       {error && <ErrorBanner message={error} onRetry={reload} />}
       <TabBar tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange} />
 
@@ -131,7 +130,6 @@ function Dashboard() {
         ) : (
           <>
             <div className="toolbar">
-              <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search across all APIs, agents, and tools..." />
               {!isSearching && <FilterBar activeTab={activeTab} selectedTypes={filterTypes} onToggleType={handleToggleType} />}
               <ViewToggle view={viewMode} onToggle={setViewMode} />
             </div>
