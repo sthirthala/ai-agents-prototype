@@ -174,3 +174,31 @@ export async function fetchApiSpec(msalInstance, accounts, apiName) {
     versionName,
   };
 }
+
+/**
+ * Fetch deployments for an API to get runtime endpoint URLs.
+ */
+export async function fetchApiDeployments(msalInstance, accounts, apiName) {
+  const token = await getAccessToken(msalInstance, accounts);
+  if (!token) throw new Error('Unable to acquire access token');
+
+  const url = `${BASE_URL}/apis/${apiName}/deployments?api-version=${API_VERSION}`;
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) throw new Error(`Failed to list deployments: ${response.status}`);
+  const data = await response.json();
+
+  return (data.value || []).map((dep) => ({
+    name: dep.name,
+    title: dep.title || dep.name,
+    description: dep.description || '',
+    environment: dep.environment || '',
+    runtimeUris: dep.server?.runtimeUris || [],
+    recommended: dep.recommended || false,
+  }));
+}

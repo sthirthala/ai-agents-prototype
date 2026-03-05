@@ -1,12 +1,28 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useMsal } from '@azure/msal-react';
-import { fetchApiSpec } from '../services/apiCenterService';
+import { fetchApiSpec, fetchApiDeployments } from '../services/apiCenterService';
 
 export default function DetailPanel({ item, type, onClose }) {
   const { instance, accounts } = useMsal();
   const [spec, setSpec] = useState(null);
   const [specLoading, setSpecLoading] = useState(false);
   const [specError, setSpecError] = useState(null);
+  const [deployments, setDeployments] = useState([]);
+  const [deploymentsLoading, setDeploymentsLoading] = useState(false);
+  const [deploymentsError, setDeploymentsError] = useState(null);
+
+  // Auto-fetch deployments for MCP tools to get endpoint URLs
+  useEffect(() => {
+    if (type !== 'tools') return;
+    let cancelled = false;
+    setDeploymentsLoading(true);
+    setDeploymentsError(null);
+    fetchApiDeployments(instance, accounts, item.id)
+      .then((deps) => { if (!cancelled) setDeployments(deps); })
+      .catch((err) => { if (!cancelled) setDeploymentsError(err.message); })
+      .finally(() => { if (!cancelled) setDeploymentsLoading(false); });
+    return () => { cancelled = true; };
+  }, [instance, accounts, item.id, type]);
 
   const loadSpec = useCallback(async () => {
     setSpecLoading(true);
@@ -108,6 +124,57 @@ export default function DetailPanel({ item, type, onClose }) {
           )}
         </div>
       </div>
+
+      {type === 'tools' && (
+        <div className="detail-section">
+          <h4>🔌 MCP Endpoint</h4>
+
+          {deploymentsLoading && (
+            <div className="spec-loading">
+              <div className="spinner spinner-sm" />
+              <span>Loading endpoint details...</span>
+            </div>
+          )}
+
+          {deploymentsError && (
+            <div className="spec-error">
+              <span>⚠️ {deploymentsError}</span>
+            </div>
+          )}
+
+          {!deploymentsLoading && !deploymentsError && deployments.length === 0 && item.endpointUrl && (
+            <div className="endpoint-card">
+              <div className="endpoint-url-row">
+                <code className="endpoint-url">{item.endpointUrl}</code>
+                <button className="spec-btn spec-btn-small" onClick={() => navigator.clipboard?.writeText(item.endpointUrl)}>Copy</button>
+              </div>
+            </div>
+          )}
+
+          {!deploymentsLoading && !deploymentsError && deployments.length === 0 && !item.endpointUrl && (
+            <p className="detail-muted">No deployments found.</p>
+          )}
+
+          {deployments.map((dep) => (
+            <div key={dep.name} className="endpoint-card">
+              <div className="endpoint-header">
+                <span className="endpoint-name">{dep.title}</span>
+                {dep.recommended && <span className="tag">Recommended</span>}
+              </div>
+              {dep.description && <p className="endpoint-desc">{dep.description}</p>}
+              {dep.runtimeUris.map((uri) => (
+                <div key={uri} className="endpoint-url-row">
+                  <code className="endpoint-url">{uri}</code>
+                  <button className="spec-btn spec-btn-small" onClick={() => navigator.clipboard?.writeText(uri)}>Copy</button>
+                </div>
+              ))}
+              {dep.environment && (
+                <span className="endpoint-env">Environment: {dep.environment}</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {type === 'apis' && (
         <div className="detail-section">
