@@ -4,21 +4,26 @@ import TabBar from './components/TabBar';
 import CardGrid from './components/CardGrid';
 import DetailPanel from './components/DetailPanel';
 import RelationshipView from './components/RelationshipView';
-import { agents, models, tools } from './data';
+import LoadingSpinner from './components/LoadingSpinner';
+import ErrorBanner from './components/ErrorBanner';
+import AuthGuard from './auth/AuthGuard';
+import useApiCenterData from './hooks/useApiCenterData';
 import './App.css';
 
-const tabs = [
-  { key: 'agents', label: 'Agents', icon: '🤖', count: agents.length },
-  { key: 'models', label: 'Models', icon: '🧠', count: models.length },
-  { key: 'tools', label: 'Tools', icon: '🛠️', count: tools.length },
-  { key: 'relationships', label: 'Relationships', icon: '🔗', count: null },
-];
-
-const collections = { agents, models, tools };
-
-function App() {
-  const [activeTab, setActiveTab] = useState('agents');
+function Dashboard() {
+  const { apis, agents, models, tools, loading, error, reload } = useApiCenterData();
+  const [activeTab, setActiveTab] = useState('apis');
   const [selectedItem, setSelectedItem] = useState(null);
+
+  const collections = { apis, agents, models, tools };
+
+  const tabs = [
+    { key: 'apis', label: 'APIs', icon: '🌐', count: apis.length },
+    { key: 'agents', label: 'Agents', icon: '🤖', count: agents.length },
+    { key: 'models', label: 'Models', icon: '🧠', count: models.length },
+    { key: 'tools', label: 'Tools', icon: '🛠️', count: tools.length },
+    { key: 'relationships', label: 'Relationships', icon: '🔗', count: null },
+  ];
 
   const handleCardClick = (item) => {
     setSelectedItem((prev) => (prev?.id === item.id ? null : item));
@@ -26,9 +31,19 @@ function App() {
 
   const handleClose = () => setSelectedItem(null);
 
+  if (loading) {
+    return (
+      <>
+        <Header />
+        <LoadingSpinner message="Fetching data from Azure API Center..." />
+      </>
+    );
+  }
+
   return (
-    <div className="app">
+    <>
       <Header />
+      {error && <ErrorBanner message={error} onRetry={reload} />}
       <TabBar tabs={tabs} activeTab={activeTab} onTabChange={(key) => { setActiveTab(key); setSelectedItem(null); }} />
 
       <main className="main-content">
@@ -48,6 +63,16 @@ function App() {
           </div>
         )}
       </main>
+    </>
+  );
+}
+
+function App() {
+  return (
+    <div className="app">
+      <AuthGuard>
+        <Dashboard />
+      </AuthGuard>
     </div>
   );
 }

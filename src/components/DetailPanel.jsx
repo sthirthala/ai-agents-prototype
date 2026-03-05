@@ -1,18 +1,4 @@
-import { agents, models, tools, getById } from '../data';
-
 export default function DetailPanel({ item, type, onClose }) {
-  const relatedModels = item.models?.map((id) => getById(models, id)).filter(Boolean) || [];
-  const relatedTools = item.tools?.map((id) => getById(tools, id)).filter(Boolean) || [];
-
-  // For models/tools, find which agents use them
-  const usedByAgents =
-    type !== 'agents'
-      ? agents.filter((a) =>
-          type === 'models'
-            ? a.models?.includes(item.id)
-            : a.tools?.includes(item.id)
-        )
-      : [];
 
   return (
     <aside className="detail-panel" style={{ '--panel-accent': item.color }}>
@@ -64,41 +50,24 @@ export default function DetailPanel({ item, type, onClose }) {
         </div>
       )}
 
-      {relatedModels.length > 0 && (
+      {type === 'apis' && (
         <div className="detail-section">
-          <h4>🧠 Models Used</h4>
-          <div className="detail-related">
-            {relatedModels.map((m) => (
-              <div key={m.id} className="related-chip" style={{ '--chip-color': m.color }}>
-                <span>{m.icon}</span> {m.name}
+          <h4>API Details</h4>
+          <div className="detail-specs">
+            <div className="spec">
+              <span className="spec-label">Kind</span>
+              <span className="spec-value">{item.kind || 'REST'}</span>
+            </div>
+            <div className="spec">
+              <span className="spec-label">Lifecycle</span>
+              <span className="spec-value">{item.lifecycleStage || 'Unknown'}</span>
+            </div>
+            {item.version && (
+              <div className="spec">
+                <span className="spec-label">Version</span>
+                <span className="spec-value">{item.version}</span>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {relatedTools.length > 0 && (
-        <div className="detail-section">
-          <h4>🛠️ Tools Available</h4>
-          <div className="detail-related">
-            {relatedTools.map((t) => (
-              <div key={t.id} className="related-chip" style={{ '--chip-color': t.color }}>
-                <span>{t.icon}</span> {t.name}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {usedByAgents.length > 0 && (
-        <div className="detail-section">
-          <h4>🤖 Used by Agents</h4>
-          <div className="detail-related">
-            {usedByAgents.map((a) => (
-              <div key={a.id} className="related-chip" style={{ '--chip-color': a.color }}>
-                <span>{a.icon}</span> {a.name}
-              </div>
-            ))}
+            )}
           </div>
         </div>
       )}
