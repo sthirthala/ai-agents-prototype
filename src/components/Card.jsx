@@ -8,10 +8,9 @@ export default function Card({ item, type, onClick, isSelected }) {
       <div className="card-header">
         <span className="card-icon">{item.icon}</span>
         <div className="card-badge">
-          {type === 'apis' && (item.kind || 'API')}
-          {type === 'agents' && 'Agent'}
-          {type === 'models' && item.type}
-          {type === 'tools' && item.category}
+          {type === 'apis' && (item.assetType || 'API')}
+          {type === 'agents' && (item.assetType === 'a2a' ? 'A2A Agent' : 'Agent')}
+          {type === 'tools' && (item.assetType === 'mcp' ? 'MCP Tool' : item.toolCategory || 'Tool')}
         </div>
       </div>
       <h3 className="card-title">{item.name}</h3>
@@ -24,13 +23,7 @@ export default function Card({ item, type, onClick, isSelected }) {
           ))}
         </div>
       )}
-      {type === 'models' && (
-        <div className="card-meta">
-          <span>📐 {item.parameters}</span>
-          <span>📝 {item.context}</span>
-        </div>
-      )}
-      {type === 'apis' && (
+      {(type === 'apis' || type === 'tools') && (
         <div className="card-meta">
           <span>🔄 {item.lifecycleStage}</span>
           {item.version && <span>📌 {item.version}</span>}

@@ -4,7 +4,7 @@ import { fetchAllAssets } from '../services/apiCenterService';
 
 export default function useApiCenterData() {
   const { instance, accounts } = useMsal();
-  const [data, setData] = useState({ apis: [], agents: [], models: [], tools: [] });
+  const [data, setData] = useState({ apis: [], agents: [], tools: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 

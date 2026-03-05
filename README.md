@@ -55,13 +55,17 @@ Open [http://localhost:5173](http://localhost:5173) and sign in with your Micros
 
 ## Azure API Center — Asset Type Convention
 
-This app expects each API registered in Azure API Center to have a `customProperties.assetType` field set to one of:
+This app reads the `customProperties.assetType` field from each API registered in Azure API Center and categorizes it into tabs:
 
-| Asset Type | Tab     | Description                        |
-|------------|---------|------------------------------------|
-| `api`      | APIs    | REST/GraphQL/gRPC API endpoints    |
-| `agent`    | Agents  | AI agents with capabilities        |
-| `model`    | Models  | Foundation / language models       |
-| `tool`     | Tools   | Developer and automation tools     |
+| Asset Type Value | Tab     | Description                        |
+|------------------|---------|------------------------------------|
+| `REST`           | APIs    | RESTful API endpoints              |
+| `GraphQL`        | APIs    | GraphQL API endpoints              |
+| `gRPC`           | APIs    | gRPC services                      |
+| `SOAP`           | APIs    | SOAP web services                  |
+| `Webhook`        | APIs    | Webhook endpoints                  |
+| `Websocket`      | APIs    | WebSocket connections              |
+| `mcp`            | Tools   | Model Context Protocol tools       |
+| `a2a`            | Agents  | Agent-to-Agent protocol agents     |
 
 

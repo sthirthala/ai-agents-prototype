@@ -11,16 +11,15 @@ import useApiCenterData from './hooks/useApiCenterData';
 import './App.css';
 
 function Dashboard() {
-  const { apis, agents, models, tools, loading, error, reload } = useApiCenterData();
+  const { apis, agents, tools, loading, error, reload } = useApiCenterData();
   const [activeTab, setActiveTab] = useState('apis');
   const [selectedItem, setSelectedItem] = useState(null);
 
-  const collections = { apis, agents, models, tools };
+  const collections = { apis, agents, tools };
 
   const tabs = [
     { key: 'apis', label: 'APIs', icon: '🌐', count: apis.length },
     { key: 'agents', label: 'Agents', icon: '🤖', count: agents.length },
-    { key: 'models', label: 'Models', icon: '🧠', count: models.length },
     { key: 'tools', label: 'Tools', icon: '🛠️', count: tools.length },
     { key: 'relationships', label: 'Relationships', icon: '🔗', count: null },
   ];
