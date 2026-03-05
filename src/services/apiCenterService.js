@@ -127,3 +127,51 @@ export async function fetchAllAssets(msalInstance, accounts) {
     tools: all.filter((item) => item.category === 'tool'),
   };
 }
+
+/**
+ * Fetch the OpenAPI spec for an API by discovering its latest version and definition,
+ * then exporting the specification content.
+ */
+export async function fetchApiSpec(msalInstance, accounts, apiName) {
+  const token = await getAccessToken(msalInstance, accounts);
+  if (!token) throw new Error('Unable to acquire access token');
+
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  };
+
+  // 1. List versions for this API
+  const versionsUrl = `${BASE_URL}/apis/${apiName}/versions?api-version=${API_VERSION}`;
+  const versionsRes = await fetch(versionsUrl, { headers });
+  if (!versionsRes.ok) throw new Error(`Failed to list versions: ${versionsRes.status}`);
+  const versionsData = await versionsRes.json();
+  const versions = versionsData.value || [];
+  if (versions.length === 0) throw new Error('No versions found for this API');
+
+  // Use the first (latest) version
+  const versionName = versions[0].name;
+
+  // 2. List definitions for this version
+  const defsUrl = `${BASE_URL}/apis/${apiName}/versions/${versionName}/definitions?api-version=${API_VERSION}`;
+  const defsRes = await fetch(defsUrl, { headers });
+  if (!defsRes.ok) throw new Error(`Failed to list definitions: ${defsRes.status}`);
+  const defsData = await defsRes.json();
+  const definitions = defsData.value || [];
+  if (definitions.length === 0) throw new Error('No definitions found for this API version');
+
+  const definitionName = definitions[0].name;
+
+  // 3. Export the specification
+  const exportUrl = `${BASE_URL}/apis/${apiName}/versions/${versionName}/definitions/${definitionName}:exportSpecification?api-version=${API_VERSION}`;
+  const exportRes = await fetch(exportUrl, { method: 'POST', headers });
+  if (!exportRes.ok) throw new Error(`Failed to export spec: ${exportRes.status}`);
+  const exportData = await exportRes.json();
+
+  return {
+    format: exportData.format || 'inline',
+    value: exportData.value || '',
+    definitionName,
+    versionName,
+  };
+}
