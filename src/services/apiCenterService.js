@@ -1,12 +1,11 @@
 import { loginRequest } from '../auth/authConfig';
 
-const SUBSCRIPTION_ID = import.meta.env.VITE_AZURE_SUBSCRIPTION_ID;
-const RESOURCE_GROUP = import.meta.env.VITE_AZURE_RESOURCE_GROUP;
 const SERVICE_NAME = import.meta.env.VITE_AZURE_APIC_SERVICE_NAME;
+const REGION = import.meta.env.VITE_AZURE_APIC_REGION || 'eastus';
 const WORKSPACE = import.meta.env.VITE_AZURE_APIC_WORKSPACE || 'default';
-const API_VERSION = '2024-03-01';
+const API_VERSION = '2024-02-01-preview';
 
-const BASE_URL = `https://management.azure.com/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.ApiCenter/services/${SERVICE_NAME}/workspaces/${WORKSPACE}`;
+const BASE_URL = `https://${SERVICE_NAME}.data.${REGION}.azure-apicenter.ms/workspaces/${WORKSPACE}`;
 
 // Categorization mapping based on assetType values
 const ASSET_TYPE_TO_CATEGORY = {
@@ -58,20 +57,19 @@ async function getAccessToken(msalInstance, accounts) {
 }
 
 function normalizeAsset(raw) {
-  const props = raw.properties || {};
-  const custom = props.customProperties || {};
-  const assetType = custom.assetType || props.kind || 'REST';
+  const custom = raw.customProperties || {};
+  const assetType = custom.assetType || raw.kind || 'REST';
   const category = ASSET_TYPE_TO_CATEGORY[assetType] || 'api';
 
   const base = {
     id: raw.name,
-    name: props.title || raw.name,
-    description: props.description || '',
+    name: raw.title || raw.name,
+    description: raw.description || '',
     assetType,
     category,
     icon: custom.icon || ASSET_TYPE_ICONS[assetType] || '🌐',
     color: custom.color || ASSET_TYPE_COLORS[assetType] || '#3b82f6',
-    lifecycleStage: props.lifecycleStage || 'Unknown',
+    lifecycleStage: raw.lifecycleStage || 'Unknown',
     version: custom.version || '',
   };
 

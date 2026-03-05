@@ -11,8 +11,8 @@ export const msalConfig = {
   },
 };
 
-// Scopes needed to call Azure Resource Manager (API Center)
-export const apiCenterScopes = ['https://management.azure.com/.default'];
+// Scopes needed to call Azure API Center data plane
+export const apiCenterScopes = ['https://azure-apicenter.net/user_impersonation'];
 
 export const loginRequest = {
   scopes: apiCenterScopes,

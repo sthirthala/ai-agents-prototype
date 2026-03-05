@@ -30,9 +30,8 @@ cp .env.example .env
 ```env
 VITE_AZURE_CLIENT_ID=your-client-id-here
 VITE_AZURE_TENANT_ID=your-tenant-id-here
-VITE_AZURE_SUBSCRIPTION_ID=your-subscription-id-here
-VITE_AZURE_RESOURCE_GROUP=your-resource-group-here
 VITE_AZURE_APIC_SERVICE_NAME=your-api-center-service-name
+VITE_AZURE_APIC_REGION=eastus
 VITE_AZURE_APIC_WORKSPACE=default
 ```
 
