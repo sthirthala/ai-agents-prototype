@@ -13,7 +13,7 @@ export default function Header() {
       <div className="header-inner">
         <div className="header-brand">
           <span className="header-logo">⚡</span>
-          <h1 className="header-title">Portt</h1>
+          <h1 className="header-title">API Center Portal</h1>
         </div>
         <p className="header-subtitle">
           Azure API Center — APIs, Agents, Models &amp; Tools

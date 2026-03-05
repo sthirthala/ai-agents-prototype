@@ -1,4 +1,4 @@
-# Portt — Azure API Center Dashboard
+# API Center Portal — Azure API Center Dashboard
 
 A React + Vite portal that connects to **Azure API Center** to discover and explore **APIs**, **AI Agents**, **Foundation Models**, and **Tools** — all categorized by `assetType` custom property.
 
