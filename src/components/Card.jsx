@@ -1,4 +1,8 @@
 export default function Card({ item, type, onClick, isSelected }) {
+  const effectiveType = type === 'all'
+    ? (item.category === 'api' ? 'apis' : item.category === 'agent' ? 'agents' : 'tools')
+    : type;
+
   return (
     <article
       className={`card ${isSelected ? 'card-selected' : ''}`}
@@ -8,9 +12,9 @@ export default function Card({ item, type, onClick, isSelected }) {
       <div className="card-header">
         <span className="card-icon">{item.icon}</span>
         <div className="card-badge">
-          {type === 'apis' && (item.assetType || 'API')}
-          {type === 'agents' && (item.assetType === 'a2a' ? 'A2A Agent' : 'Agent')}
-          {type === 'tools' && (item.assetType === 'mcp' ? 'MCP Tool' : item.toolCategory || 'Tool')}
+          {effectiveType === 'apis' && (item.assetType || 'API')}
+          {effectiveType === 'agents' && (item.assetType === 'a2a' ? 'A2A Agent' : 'Agent')}
+          {effectiveType === 'tools' && (item.assetType === 'mcp' ? 'MCP Tool' : item.toolCategory || 'Tool')}
         </div>
       </div>
       <h3 className="card-title">{item.name}</h3>
@@ -23,7 +27,7 @@ export default function Card({ item, type, onClick, isSelected }) {
           ))}
         </div>
       )}
-      {(type === 'apis' || type === 'tools') && (
+      {(effectiveType === 'apis' || effectiveType === 'tools') && (
         <div className="card-meta">
           <span>🔄 {item.lifecycleStage}</span>
           {item.version && <span>📌 {item.version}</span>}

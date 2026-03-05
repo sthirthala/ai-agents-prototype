@@ -86,6 +86,7 @@ function normalizeAsset(raw) {
     return {
       ...base,
       toolCategory: custom.category || 'MCP',
+      endpointUrl: custom.endpointUrl || raw.termsOfService?.url || '',
     };
   }
 

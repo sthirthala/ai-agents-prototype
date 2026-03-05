@@ -44,29 +44,36 @@ function Dashboard() {
   const [viewMode, setViewMode] = useState('card');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTypes, setFilterTypes] = useState([]);
+  const isSearching = searchQuery.trim().length > 0;
 
-  const collections = { apis, agents, tools };
+  // Global search across all collections
+  const globalSearchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const all = [...apis, ...agents, ...tools];
+    let result = all;
 
-  const filteredItems = useMemo(() => {
-    const items = collections[activeTab] || [];
-    let result = items;
-
-    // Filter by asset type
     if (filterTypes.length > 0) {
       result = result.filter((item) => filterTypes.includes(item.assetType));
     }
 
-    // Search
-    if (searchQuery.trim()) {
-      result = result
-        .map((item) => ({ item, score: searchScore(item, searchQuery) }))
-        .filter(({ score }) => score > 0)
-        .sort((a, b) => b.score - a.score)
-        .map(({ item }) => item);
-    }
+    return result
+      .map((item) => ({ item, score: searchScore(item, searchQuery) }))
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map(({ item }) => item);
+  }, [apis, agents, tools, searchQuery, filterTypes]);
 
-    return result;
-  }, [activeTab, apis, agents, tools, filterTypes, searchQuery]);
+  // Tab-scoped items (with optional asset type filter, no search)
+  const filteredItems = useMemo(() => {
+    const tabCollections = { apis, agents, tools };
+    const items = tabCollections[activeTab] || [];
+    if (filterTypes.length > 0) {
+      return items.filter((item) => filterTypes.includes(item.assetType));
+    }
+    return items;
+  }, [activeTab, apis, agents, tools, filterTypes]);
+
+  const displayItems = isSearching ? globalSearchResults : filteredItems;
 
   const tabs = [
     { key: 'apis', label: 'APIs', icon: '🌐', count: apis.length },
@@ -98,6 +105,11 @@ function Dashboard() {
     }
   };
 
+  // Determine the type for a selected item (needed for DetailPanel)
+  const selectedType = selectedItem
+    ? (selectedItem.category === 'api' ? 'apis' : selectedItem.category === 'agent' ? 'agents' : 'tools')
+    : activeTab;
+
   if (loading) {
     return (
       <>
@@ -114,34 +126,37 @@ function Dashboard() {
       <TabBar tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange} />
 
       <main className="main-content">
-        {activeTab === 'relationships' ? (
+        {activeTab === 'relationships' && !isSearching ? (
           <RelationshipView onSelectItem={handleCardClick} />
         ) : (
           <>
             <div className="toolbar">
-              <SearchBar value={searchQuery} onChange={setSearchQuery} />
-              <FilterBar activeTab={activeTab} selectedTypes={filterTypes} onToggleType={handleToggleType} />
+              <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search across all APIs, agents, and tools..." />
+              {!isSearching && <FilterBar activeTab={activeTab} selectedTypes={filterTypes} onToggleType={handleToggleType} />}
               <ViewToggle view={viewMode} onToggle={setViewMode} />
             </div>
-            <div className="results-count">{filteredItems.length} result{filteredItems.length !== 1 ? 's' : ''}</div>
+            <div className="results-count">
+              {isSearching && <span className="search-scope-badge">All</span>}
+              {displayItems.length} result{displayItems.length !== 1 ? 's' : ''}
+              {isSearching && ` for "${searchQuery}"`}
+            </div>
             <div className={`dashboard ${selectedItem ? 'with-panel' : ''}`}>
               {viewMode === 'card' ? (
                 <CardGrid
-                  items={filteredItems}
-                  type={activeTab}
+                  items={displayItems}
+                  type={isSearching ? 'all' : activeTab}
                   onCardClick={handleCardClick}
                   selectedId={selectedItem?.id}
                 />
               ) : (
                 <ListView
-                  items={filteredItems}
-                  type={activeTab}
+                  items={displayItems}
                   onItemClick={handleCardClick}
                   selectedId={selectedItem?.id}
                 />
               )}
               {selectedItem && (
-                <DetailPanel item={selectedItem} type={activeTab} onClose={handleClose} />
+                <DetailPanel item={selectedItem} type={selectedType} onClose={handleClose} />
               )}
             </div>
           </>

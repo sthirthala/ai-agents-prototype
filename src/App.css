@@ -240,6 +240,19 @@ body {
   font-size: 0.78rem;
   color: var(--text-muted);
   margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.search-scope-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  background: rgba(99, 102, 241, 0.18);
+  color: #a78bfa;
 }
 
 /* ===== Search Bar ===== */
@@ -460,6 +473,36 @@ body {
   padding: 3rem 1rem;
   color: var(--text-muted);
   font-size: 0.9rem;
+}
+
+.list-endpoint-link {
+  font-size: 0.78rem;
+  color: #818cf8;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.list-endpoint-link:hover {
+  color: #a78bfa;
+  text-decoration: underline;
+}
+
+.spec-url {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+}
+
+.spec-link {
+  color: #818cf8;
+  text-decoration: none;
+  word-break: break-all;
+  font-size: 0.8rem;
+}
+
+.spec-link:hover {
+  color: #a78bfa;
+  text-decoration: underline;
 }
 
 /* ===== Tab Bar ===== */

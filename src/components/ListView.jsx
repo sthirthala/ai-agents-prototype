@@ -22,7 +22,13 @@ export default function ListView({ items, onItemClick, selectedId }) {
             <span className="list-type-badge">{item.assetType}</span>
           </span>
           <span className="list-col list-col-desc">{item.description}</span>
-          <span className="list-col list-col-lifecycle">{item.lifecycleStage || '—'}</span>
+          <span className="list-col list-col-lifecycle">
+            {item.endpointUrl ? (
+              <a className="list-endpoint-link" href={item.endpointUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                🔗 Endpoint
+              </a>
+            ) : (item.lifecycleStage || '—')}
+          </span>
         </div>
       ))}
       {items.length === 0 && (

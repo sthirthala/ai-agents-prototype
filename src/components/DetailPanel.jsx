@@ -92,6 +92,14 @@ export default function DetailPanel({ item, type, onClose }) {
               <span className="spec-value">{item.toolCategory || 'MCP'}</span>
             </div>
           )}
+          {type === 'tools' && item.endpointUrl && (
+            <div className="spec spec-url">
+              <span className="spec-label">Endpoint URL</span>
+              <a className="spec-value spec-link" href={item.endpointUrl} target="_blank" rel="noopener noreferrer">
+                {item.endpointUrl}
+              </a>
+            </div>
+          )}
           {type === 'apis' && (
             <div className="spec">
               <span className="spec-label">Protocol</span>
