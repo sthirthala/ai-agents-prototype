@@ -12,6 +12,9 @@ export default function CardGrid({ items, type, onCardClick, selectedId }) {
           isSelected={item.id === selectedId}
         />
       ))}
+      {items.length === 0 && (
+        <div className="list-empty">No items match your filters.</div>
+      )}
     </section>
   );
 }
