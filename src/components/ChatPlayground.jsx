@@ -316,7 +316,7 @@ export default function ChatPlayground({ agent, endpointUrl }) {
               value={endpointInput}
               onChange={(e) => setEndpointInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleConnect()}
-              placeholder="Enter A2A agent URL (e.g. http://localhost:10002)"
+              placeholder="Enter A2A agent URL (e.g. /a2a-proxy/9999)"
             />
             <button className="chat-connect-btn" onClick={handleConnect} disabled={!endpointInput.trim()}>
               Connect

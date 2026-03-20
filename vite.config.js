@@ -1,33 +1,49 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { request as httpRequest } from 'http'
+
+// Vite plugin that proxies /a2a-proxy/{port}/... → http://localhost:{port}/...
+// This enables the Chat Playground to reach local A2A agent servers without CORS issues.
+function a2aProxyPlugin() {
+  return {
+    name: 'a2a-dynamic-proxy',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const match = req.url?.match(/^\/a2a-proxy\/(\d+)(\/.*)?$/);
+        if (!match) return next();
+
+        const port = parseInt(match[1], 10);
+        const path = match[2] || '/';
+
+        const options = {
+          hostname: 'localhost',
+          port,
+          path,
+          method: req.method,
+          headers: {
+            ...req.headers,
+            host: `localhost:${port}`,
+          },
+        };
+
+        const proxyReq = httpRequest(options, (proxyRes) => {
+          res.writeHead(proxyRes.statusCode, proxyRes.headers);
+          proxyRes.pipe(res, { end: true });
+        });
+
+        proxyReq.on('error', (err) => {
+          res.writeHead(502, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: `Proxy error: ${err.message}` }));
+        });
+
+        req.pipe(proxyReq, { end: true });
+      });
+    },
+  };
+}
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), a2aProxyPlugin()],
   base: '/ai-agents-prototype/',
-  server: {
-    // Proxy for local A2A agent servers (avoids CORS issues during dev).
-    // Usage: enter "http://localhost:5173/a2a-proxy/10002" in the Chat Playground
-    // and it will proxy to "http://localhost:10002".
-    proxy: {
-      '/a2a-proxy': {
-        target: 'http://localhost',
-        changeOrigin: true,
-        rewrite: (path) => {
-          // /a2a-proxy/10002/foo → http://localhost:10002/foo
-          const match = path.match(/^\/a2a-proxy\/(\d+)(\/.*)?$/);
-          if (match) return `:${match[1]}${match[2] || '/'}`;
-          return path;
-        },
-        configure: (proxy) => {
-          proxy.on('proxyReq', (proxyReq, req) => {
-            const match = req.url.match(/^\/a2a-proxy\/(\d+)/);
-            if (match) {
-              proxyReq.setHeader('host', `localhost:${match[1]}`);
-            }
-          });
-        },
-      },
-    },
-  },
 })
