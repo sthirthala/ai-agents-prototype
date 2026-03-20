@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { sendMessage, streamMessage, extractText, fetchAgentCard } from '../services/a2aClient';
 
 // Generate contextual simulated responses based on agent capabilities and framework
 function getSimulatedReply(agent, message) {
@@ -96,17 +97,23 @@ function getSimulatedReply(agent, message) {
   return matchedPools[idx];
 }
 
-export default function ChatPlayground({ agent }) {
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: `Hi! I'm the **${agent.name}**. ${agent.description} How can I help you today?`,
-    },
-  ]);
+export default function ChatPlayground({ agent, endpointUrl }) {
+  const greeting = `Hi! I'm the **${agent.name}**. ${agent.description} How can I help you today?`;
+  const [messages, setMessages] = useState([{ role: 'assistant', content: greeting }]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [endpoint, setEndpoint] = useState(endpointUrl || '');
+  const [endpointInput, setEndpointInput] = useState(endpointUrl || '');
+  const [connected, setConnected] = useState(false);
+  const [agentCard, setAgentCard] = useState(null);
+  const [connectionError, setConnectionError] = useState(null);
+  const [sessionId] = useState(() => `session-${crypto.randomUUID()}`);
+  const [taskId, setTaskId] = useState(null);
+  const abortRef = useRef(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+
+  const isLive = connected && endpoint;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -116,35 +123,137 @@ export default function ChatPlayground({ agent }) {
     inputRef.current?.focus();
   }, []);
 
-  // Reset chat when agent changes
+  // Reset when agent changes
   useEffect(() => {
-    setMessages([
-      {
-        role: 'assistant',
-        content: `Hi! I'm the **${agent.name}**. ${agent.description} How can I help you today?`,
-      },
-    ]);
+    setMessages([{ role: 'assistant', content: greeting }]);
     setInput('');
     setIsTyping(false);
-  }, [agent.id, agent.name, agent.description]);
+    setConnected(false);
+    setAgentCard(null);
+    setConnectionError(null);
+    setTaskId(null);
+    setEndpoint(endpointUrl || '');
+    setEndpointInput(endpointUrl || '');
+  }, [agent.id, agent.name, agent.description, endpointUrl, greeting]);
 
-  const handleSend = () => {
+  const handleConnect = useCallback(async () => {
+    const url = endpointInput.trim().replace(/\/+$/, '');
+    if (!url) return;
+    setConnectionError(null);
+    try {
+      const card = await fetchAgentCard(url);
+      setAgentCard(card);
+      setEndpoint(url);
+      setConnected(true);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'system',
+          content: `🟢 Connected to **${card.name || 'agent'}** at \`${url}\`${card.capabilities?.streaming ? ' (streaming enabled)' : ''}`,
+        },
+      ]);
+    } catch (err) {
+      setConnectionError(`Could not connect: ${err.message}`);
+      setConnected(false);
+    }
+  }, [endpointInput]);
+
+  const handleDisconnect = () => {
+    setConnected(false);
+    setAgentCard(null);
+    setEndpoint('');
+    setTaskId(null);
+    setMessages((prev) => [...prev, { role: 'system', content: '🔴 Disconnected from live agent. Responses are now simulated.' }]);
+  };
+
+  const handleSend = useCallback(async () => {
     const trimmed = input.trim();
     if (!trimmed || isTyping) return;
 
-    const userMsg = { role: 'user', content: trimmed };
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages((prev) => [...prev, { role: 'user', content: trimmed }]);
     setInput('');
     setIsTyping(true);
 
-    // Simulate agent "thinking" delay
-    const delay = 800 + Math.random() * 1200;
-    setTimeout(() => {
-      const reply = getSimulatedReply(agent, trimmed);
-      setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
+    if (!isLive) {
+      // Simulated fallback
+      const delay = 800 + Math.random() * 1200;
+      setTimeout(() => {
+        const reply = getSimulatedReply(agent, trimmed);
+        setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
+        setIsTyping(false);
+      }, delay);
+      return;
+    }
+
+    // Real A2A call
+    try {
+      const supportsStreaming = agentCard?.capabilities?.streaming;
+
+      if (supportsStreaming) {
+        const controller = new AbortController();
+        abortRef.current = controller;
+        let fullText = '';
+        let currentTaskId = taskId;
+
+        // Add placeholder message that we'll update
+        setMessages((prev) => [...prev, { role: 'assistant', content: '...' }]);
+
+        for await (const event of streamMessage(endpoint, trimmed, sessionId, currentTaskId, controller.signal)) {
+          if (event.id && !currentTaskId) {
+            currentTaskId = event.id;
+            setTaskId(event.id);
+          }
+
+          const chunk = extractText(event);
+          if (chunk) {
+            fullText = chunk; // A2A sends full text per update, not deltas
+            setMessages((prev) => {
+              const updated = [...prev];
+              updated[updated.length - 1] = { role: 'assistant', content: fullText };
+              return updated;
+            });
+          }
+
+          // Handle input-required state
+          if (event.status?.state === 'input-required') {
+            const statusMsg = extractText(event);
+            if (statusMsg) {
+              setMessages((prev) => {
+                const updated = [...prev];
+                updated[updated.length - 1] = { role: 'assistant', content: statusMsg };
+                return updated;
+              });
+            }
+          }
+        }
+
+        // If we never got any content, show a status message
+        if (!fullText) {
+          setMessages((prev) => {
+            const updated = [...prev];
+            updated[updated.length - 1] = { role: 'assistant', content: '_Agent completed the task with no text output._' };
+            return updated;
+          });
+        }
+      } else {
+        // Non-streaming: single request/response
+        const result = await sendMessage(endpoint, trimmed, sessionId, taskId);
+        if (result.id && !taskId) setTaskId(result.id);
+
+        const text = extractText(result) || '_Agent completed the task with no text output._';
+        setMessages((prev) => [...prev, { role: 'assistant', content: text }]);
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      setMessages((prev) => [
+        ...prev,
+        { role: 'system', content: `⚠️ Error: ${err.message}` },
+      ]);
+    } finally {
       setIsTyping(false);
-    }, delay);
-  };
+      abortRef.current = null;
+    }
+  }, [input, isTyping, isLive, agent, agentCard, endpoint, sessionId, taskId]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -154,32 +263,72 @@ export default function ChatPlayground({ agent }) {
   };
 
   const handleClear = () => {
-    setMessages([
-      {
-        role: 'assistant',
-        content: `Hi! I'm the **${agent.name}**. ${agent.description} How can I help you today?`,
-      },
-    ]);
+    setMessages([{ role: 'assistant', content: greeting }]);
+    setTaskId(null);
+  };
+
+  const handleStop = () => {
+    if (abortRef.current) {
+      abortRef.current.abort();
+      setIsTyping(false);
+    }
   };
 
   const renderContent = (text) => {
-    // Simple bold markdown support
-    return text.split(/(\*\*.*?\*\*)/g).map((part, i) =>
-      part.startsWith('**') && part.endsWith('**') ? (
-        <strong key={i}>{part.slice(2, -2)}</strong>
-      ) : (
-        part
-      )
-    );
+    // Simple markdown: bold, inline code, code blocks
+    return text.split(/(\*\*.*?\*\*|`[^`]+`|```[\s\S]*?```)/g).map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i}>{part.slice(2, -2)}</strong>;
+      }
+      if (part.startsWith('```') && part.endsWith('```')) {
+        return <pre key={i} className="chat-code-block">{part.slice(3, -3).replace(/^\w*\n/, '')}</pre>;
+      }
+      if (part.startsWith('`') && part.endsWith('`')) {
+        return <code key={i} className="chat-inline-code">{part.slice(1, -1)}</code>;
+      }
+      return part;
+    });
   };
 
   return (
     <div className="chat-playground">
       <div className="chat-header-bar">
-        <span className="chat-header-title">💬 Chat Playground</span>
-        <button className="chat-clear-btn" onClick={handleClear} title="Clear chat">
-          🗑️
-        </button>
+        <span className="chat-header-title">
+          💬 Chat Playground
+          {isLive && <span className="chat-live-badge">● LIVE</span>}
+          {!isLive && <span className="chat-sim-badge">SIMULATED</span>}
+        </span>
+        <div className="chat-header-actions">
+          {isTyping && isLive && (
+            <button className="chat-stop-btn" onClick={handleStop} title="Stop generation">⏹</button>
+          )}
+          <button className="chat-clear-btn" onClick={handleClear} title="Clear chat">🗑️</button>
+        </div>
+      </div>
+
+      {/* Endpoint connection bar */}
+      <div className="chat-endpoint-bar">
+        {!connected ? (
+          <>
+            <input
+              className="chat-endpoint-input"
+              type="text"
+              value={endpointInput}
+              onChange={(e) => setEndpointInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleConnect()}
+              placeholder="Enter A2A agent URL (e.g. http://localhost:10002)"
+            />
+            <button className="chat-connect-btn" onClick={handleConnect} disabled={!endpointInput.trim()}>
+              Connect
+            </button>
+          </>
+        ) : (
+          <div className="chat-connected-bar">
+            <span className="chat-connected-label">🟢 {agentCard?.name || endpoint}</span>
+            <button className="chat-disconnect-btn" onClick={handleDisconnect}>Disconnect</button>
+          </div>
+        )}
+        {connectionError && <div className="chat-connection-error">{connectionError}</div>}
       </div>
 
       <div className="chat-messages">
@@ -187,6 +336,9 @@ export default function ChatPlayground({ agent }) {
           <div key={i} className={`chat-message chat-message-${msg.role}`}>
             {msg.role === 'assistant' && (
               <span className="chat-avatar">{agent.icon}</span>
+            )}
+            {msg.role === 'system' && (
+              <span className="chat-avatar">ℹ️</span>
             )}
             <div className={`chat-bubble chat-bubble-${msg.role}`}>
               {renderContent(msg.content)}
@@ -213,7 +365,7 @@ export default function ChatPlayground({ agent }) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={`Ask ${agent.name} something...`}
+          placeholder={isLive ? `Message ${agentCard?.name || agent.name}...` : `Ask ${agent.name} something (simulated)...`}
           rows={1}
           disabled={isTyping}
         />
@@ -228,7 +380,10 @@ export default function ChatPlayground({ agent }) {
       </div>
 
       <p className="chat-disclaimer">
-        Simulated responses for demo purposes.
+        {isLive
+          ? `Connected to live A2A agent at ${endpoint}`
+          : 'Enter an A2A agent URL above to chat with a real agent, or send messages for simulated responses.'
+        }
       </p>
     </div>
   );
