@@ -24,6 +24,8 @@ function searchScore(item, query) {
     item.assetType || '',
     item.kind || '',
     item.toolCategory || '',
+    item.framework || '',
+    item.language || '',
     ...(item.capabilities || []),
   ].join(' ').toLowerCase();
 

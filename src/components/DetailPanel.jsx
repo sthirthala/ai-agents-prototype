@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useMsal } from '@azure/msal-react';
 import { fetchApiSpec, fetchApiDeployments } from '../services/apiCenterService';
+import ChatPlayground from './ChatPlayground';
 
 export default function DetailPanel({ item, type, onClose }) {
   const { instance, accounts } = useMsal();
@@ -102,6 +103,26 @@ export default function DetailPanel({ item, type, onClose }) {
               <span className="spec-value">{item.version}</span>
             </div>
           )}
+          {item.framework && (
+            <div className="spec">
+              <span className="spec-label">Framework</span>
+              <span className="spec-value">{item.framework}</span>
+            </div>
+          )}
+          {item.language && (
+            <div className="spec">
+              <span className="spec-label">Language</span>
+              <span className="spec-value">{item.language}</span>
+            </div>
+          )}
+          {item.sourceUrl && (
+            <div className="spec spec-url">
+              <span className="spec-label">Source Code</span>
+              <a className="spec-value spec-link" href={item.sourceUrl} target="_blank" rel="noopener noreferrer">
+                View on GitHub ↗
+              </a>
+            </div>
+          )}
           {type === 'tools' && (
             <div className="spec">
               <span className="spec-label">Category</span>
@@ -173,6 +194,12 @@ export default function DetailPanel({ item, type, onClose }) {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {type === 'agents' && (
+        <div className="detail-section">
+          <ChatPlayground agent={item} />
         </div>
       )}
 

@@ -19,6 +19,7 @@ export default function Card({ item, type, onClick, isSelected }) {
       </div>
       <h3 className="card-title">{item.name}</h3>
       {item.provider && <span className="card-provider">{item.provider}</span>}
+      {item.framework && <span className="card-provider">{item.framework}{item.language ? ` · ${item.language}` : ''}</span>}
       <p className="card-description">{item.description}</p>
       {item.capabilities && (
         <div className="card-tags">
