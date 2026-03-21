@@ -112,10 +112,29 @@ export async function* streamMessage(baseUrl, text, sessionId, existingTaskId, s
 
   if (!res.ok) {
     const errText = await res.text().catch(() => '');
-    throw new Error(`A2A stream failed (${res.status}): ${errText}`);
+    // Try to extract JSON-RPC error message
+    try {
+      const errJson = JSON.parse(errText);
+      if (errJson.error?.message) throw new Error(errJson.error.message);
+    } catch (e) {
+      if (e.message && !e.message.startsWith('Unexpected')) throw e;
+    }
+    throw new Error(`A2A stream failed (${res.status}): ${errText.slice(0, 200)}`);
   }
 
   const contentType = res.headers.get('content-type') || '';
+
+  // If the response is plain JSON (not a stream), handle it directly.
+  // This happens when the agent returns an error or a non-streaming response.
+  if (contentType.includes('application/json')) {
+    const json = await res.json();
+    if (json.error) {
+      const msg = json.error.message || JSON.stringify(json.error);
+      throw new Error(msg.length > 300 ? msg.slice(0, 300) + '…' : msg);
+    }
+    if (json.result) yield json.result;
+    return;
+  }
 
   // Handle SSE-style streams
   if (contentType.includes('text/event-stream')) {
